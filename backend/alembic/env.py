@@ -45,7 +45,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = settings.DATABASE_URL
+    url = settings.DIRECT_URL or settings.DATABASE_URL
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -59,9 +59,11 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    from app.core.database import engine
+    from sqlalchemy import create_engine
+    migration_url = settings.DIRECT_URL or settings.DATABASE_URL
+    migration_engine = create_engine(migration_url)
 
-    with engine.connect() as connection:
+    with migration_engine.connect() as connection:
         context.configure(
             connection=connection, target_metadata=target_metadata
         )

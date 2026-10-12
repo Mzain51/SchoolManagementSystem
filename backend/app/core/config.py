@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import AnyHttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str = "sqlite:///./sms_dev.db"
+    DIRECT_URL: Optional[str] = None
     
     # Supabase Auth & JWT
     SUPABASE_URL: str = "https://placeholder.supabase.co"
