@@ -67,3 +67,87 @@ export interface DashboardStatsResponse {
   recent_activities: ActivityItem[];
   recent_notices: NoticeItem[];
 }
+
+export interface AcademicYear {
+  id: string;
+  school_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+}
+
+export interface SchoolClass {
+  id: string;
+  school_id: string;
+  academic_year_id: string;
+  name: string;
+  sort_order: number;
+}
+
+export interface SchoolSection {
+  id: string;
+  school_id: string;
+  class_id: string;
+  name: string;
+  capacity: number | null;
+}
+
+export interface SchoolSubject {
+  id: string;
+  school_id: string;
+  academic_year_id: string;
+  name: string;
+  code: string;
+}
+
+export type StudentStatus = "active" | "inactive" | "transferred" | "graduated";
+
+export interface Student {
+  id: string;
+  school_id: string;
+  academic_year_id: string;
+  class_id: string;
+  class_name: string;
+  section_id: string;
+  section_name: string;
+  admission_number: string;
+  full_name: string;
+  date_of_birth: string | null;
+  gender: "female" | "male" | "other" | "prefer_not_to_say" | null;
+  admission_date: string;
+  guardian_name: string;
+  guardian_relationship: string | null;
+  guardian_phone: string;
+  address: string | null;
+  previous_school: string | null;
+  emergency_contact: string | null;
+  status: StudentStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudentInput {
+  academic_year_id: string;
+  class_id: string;
+  section_id: string;
+  admission_number: string;
+  full_name: string;
+  date_of_birth?: string | null;
+  gender?: Student["gender"];
+  admission_date: string;
+  guardian_name: string;
+  guardian_relationship?: string;
+  guardian_phone: string;
+  address?: string;
+  previous_school?: string;
+  emergency_contact?: string;
+  status?: StudentStatus;
+}
+
+export interface StudentListResponse {
+  items: Student[];
+  total: number;
+  page: number;
+  page_size: number;
+}

@@ -3,57 +3,25 @@
 import React from "react";
 import Link from "next/link";
 import {
-  UserPlus,
-  ClipboardCheck,
-  CreditCard,
-  FileSpreadsheet,
-  Edit3,
-  Megaphone,
+  GraduationCap,
+  Settings,
 } from "lucide-react";
 
 export function QuickActions() {
   const actions = [
     {
-      title: "Register Student",
-      description: "New admission intake",
-      href: "/admissions",
-      icon: UserPlus,
+      title: "Manage Students",
+      description: "Roster and new admissions",
+      href: "/students",
+      icon: GraduationCap,
       color: "bg-blue-50 text-blue-700 hover:bg-blue-100/80 border-blue-200/60",
     },
     {
-      title: "Take Attendance",
-      description: "Daily class register",
-      href: "/attendance/students",
-      icon: ClipboardCheck,
-      color: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100/80 border-emerald-200/60",
-    },
-    {
-      title: "Record Fee Payment",
-      description: "Cash/Bank receipt voucher",
-      href: "/finance/payments",
-      icon: CreditCard,
-      color: "bg-amber-50 text-amber-700 hover:bg-amber-100/80 border-amber-200/60",
-    },
-    {
-      title: "Create Examination",
-      description: "Terminal / Midterm exams",
-      href: "/exams",
-      icon: FileSpreadsheet,
-      color: "bg-purple-50 text-purple-700 hover:bg-purple-100/80 border-purple-200/60",
-    },
-    {
-      title: "Enter Exam Marks",
-      description: "Subject teacher entry",
-      href: "/exams/marks",
-      icon: Edit3,
+      title: "Academic setup",
+      description: "Years, classes and subjects",
+      href: "/academic-setup",
+      icon: Settings,
       color: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100/80 border-indigo-200/60",
-    },
-    {
-      title: "Post Announcement",
-      description: "School notice or holiday",
-      href: "/announcements",
-      icon: Megaphone,
-      color: "bg-rose-50 text-rose-700 hover:bg-rose-100/80 border-rose-200/60",
     },
   ];
 
@@ -64,7 +32,7 @@ export function QuickActions() {
         <p className="text-xs text-slate-500">Fast shortcuts for daily administrative and teacher tasks</p>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:max-w-xl">
         {actions.map((act, i) => {
           const Icon = act.icon;
           return (

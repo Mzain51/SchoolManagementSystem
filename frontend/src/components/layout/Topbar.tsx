@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import {
   Menu,
   School as SchoolIcon,
-  Bell,
   ChevronDown,
   User,
   Shield,
@@ -13,6 +12,8 @@ import {
   Search,
 } from "lucide-react";
 import { UserContext, School } from "@/types/api";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 interface TopbarProps {
   userContext: UserContext | null;
@@ -21,8 +22,16 @@ interface TopbarProps {
 }
 
 export function Topbar({ userContext, onToggleSidebar, onRefresh }: TopbarProps) {
+  const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSchoolOpen, setIsSchoolOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
+  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = searchText.trim();
+    router.push(query ? `/students?q=${encodeURIComponent(query)}` : "/students");
+  }
 
   const activeSchool = userContext?.available_schools.find(
     (s) => s.id === userContext.active_school_id
@@ -103,16 +112,19 @@ export function Topbar({ userContext, onToggleSidebar, onRefresh }: TopbarProps)
       </div>
 
       {/* Center: Quick Search Bar */}
-      <div className="hidden md:flex items-center max-w-sm w-full mx-4">
+      <form onSubmit={submitSearch} className="hidden md:flex items-center max-w-sm w-full mx-4">
         <div className="relative w-full">
           <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
           <input
             type="text"
-            placeholder="Search admission no, student, voucher..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            aria-label="Search students"
+            placeholder="Search student name or admission no."
             className="w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-9 pr-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
-      </div>
+      </form>
 
       {/* Right: Actions & User Profile */}
       <div className="flex items-center gap-2 sm:gap-3">
@@ -123,14 +135,6 @@ export function Topbar({ userContext, onToggleSidebar, onRefresh }: TopbarProps)
           className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
         >
           <RefreshCw className="h-4 w-4" />
-        </button>
-
-        {/* Notifications */}
-        <button
-          className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-blue-600"></span>
         </button>
 
         {/* User Role Pill */}
@@ -171,12 +175,12 @@ export function Topbar({ userContext, onToggleSidebar, onRefresh }: TopbarProps)
                 <p className="text-[11px] text-slate-500">{userContext?.email}</p>
                 <div className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-400">
                   <Shield className="h-3 w-3 text-emerald-600" />
-                  <span>Authenticated via Supabase</span>
+                  <span>School account</span>
                 </div>
               </div>
 
               {/* Dev Role Switcher for instant testing */}
-              <div className="py-2 border-b border-slate-100">
+              {process.env.NODE_ENV === "development" && <div className="py-2 border-b border-slate-100">
                 <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Switch Active Role (Testing)
                 </div>
@@ -203,14 +207,14 @@ export function Topbar({ userContext, onToggleSidebar, onRefresh }: TopbarProps)
                     <span className="text-[10px] text-amber-600 font-medium">Fees & Cash Vouchers</span>
                   </button>
                 </div>
-              </div>
+              </div>}
 
               <div className="pt-1">
                 <button
                   onClick={() => {
                     localStorage.removeItem("sms_auth_token");
                     localStorage.removeItem("sms_active_school_id");
-                    window.location.reload();
+                    void createClient().auth.signOut().finally(() => window.location.assign("/login"));
                   }}
                   className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition"
                 >

@@ -39,6 +39,7 @@ import { UserContext } from "@/types/api";
 interface SidebarProps {
   userContext: UserContext | null;
   isOpen: boolean;
+  apiStatus: "checking" | "online" | "offline";
   onClose?: () => void;
 }
 
@@ -67,9 +68,10 @@ export const navigationConfig: NavSection[] = [
     items: [
       { title: "Students", href: "/students", icon: GraduationCap },
       { title: "Admissions", href: "/admissions", icon: UserPlus, roles: ["admin"] },
-      { title: "Classes & Sections", href: "/classes", icon: Layers, roles: ["admin"] },
-      { title: "Subjects", href: "/subjects", icon: BookOpen, roles: ["admin"] },
-      { title: "Academic Years", href: "/academic-years", icon: CalendarDays, roles: ["admin"] },
+      { title: "Classes & Sections", href: "/academic-setup#classes", icon: Layers, roles: ["admin"] },
+      { title: "Subjects", href: "/academic-setup#subjects", icon: BookOpen, roles: ["admin"] },
+      { title: "Academic Years", href: "/academic-setup#years", icon: CalendarDays, roles: ["admin"] },
+      { title: "Academic Setup", href: "/academic-setup", icon: Settings, roles: ["admin"] },
       { title: "Timetable", href: "/timetable", icon: Clock },
     ],
   },
@@ -129,7 +131,9 @@ export const navigationConfig: NavSection[] = [
   },
 ];
 
-export function Sidebar({ userContext, isOpen }: SidebarProps) {
+const implementedRoutes = new Set(["/", "/students", "/academic-setup", "/academic-setup#classes", "/academic-setup#years", "/academic-setup#subjects"]);
+
+export function Sidebar({ userContext, isOpen, apiStatus }: SidebarProps) {
   const pathname = usePathname();
   const currentRole = userContext?.active_role || (userContext?.is_superadmin ? "admin" : "admin");
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -168,7 +172,13 @@ export function Sidebar({ userContext, isOpen }: SidebarProps) {
             return null;
           }
 
-          const isCollapsible = section.items.length > 2;
+          const visibleItems = section.items.filter((item) => {
+            const hasRole = !item.roles || item.roles.includes(currentRole) || userContext?.is_superadmin;
+            return hasRole && implementedRoutes.has(item.href);
+          });
+          if (visibleItems.length === 0) return null;
+
+          const isCollapsible = visibleItems.length > 2;
           const isSectionOpen = openSections[section.title] ?? true;
 
           return (
@@ -188,13 +198,8 @@ export function Sidebar({ userContext, isOpen }: SidebarProps) {
 
               {isSectionOpen && (
                 <div className="space-y-0.5">
-                  {section.items.map((item) => {
-                    // Check role restrictions on item
-                    if (item.roles && !item.roles.includes(currentRole) && !userContext?.is_superadmin) {
-                      return null;
-                    }
-
-                    const isActive = pathname === item.href;
+                  {visibleItems.map((item) => {
+                    const isActive = pathname === item.href.split("#")[0];
                     const Icon = item.icon;
 
                     return (
@@ -236,8 +241,8 @@ export function Sidebar({ userContext, isOpen }: SidebarProps) {
       <div className="border-t border-slate-100 p-3 bg-slate-50/50">
         <div className="flex items-center justify-between px-2 text-[11px] text-slate-500">
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>API Online</span>
+            <span className={cn("h-2 w-2 rounded-full", apiStatus === "online" ? "bg-emerald-500" : apiStatus === "offline" ? "bg-rose-500" : "bg-amber-400 animate-pulse")}></span>
+            <span>{apiStatus === "online" ? "API Online" : apiStatus === "offline" ? "API Offline" : "Checking API"}</span>
           </div>
           <span className="font-mono text-[10px] text-slate-400">PKT UTC+5</span>
         </div>

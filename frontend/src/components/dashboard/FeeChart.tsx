@@ -32,6 +32,9 @@ export function FeeChart({ data }: FeeChartProps) {
       </div>
 
       <div className="mt-4 h-64 w-full">
+        {data.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-center text-xs text-slate-400">Collection trends will appear after fee management is configured.</div>
+        ) : (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -66,6 +69,7 @@ export function FeeChart({ data }: FeeChartProps) {
             <Bar dataKey="value" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={30} />
           </BarChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

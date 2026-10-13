@@ -3,6 +3,7 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
 # Ensure backend root is in python path
@@ -16,8 +17,12 @@ from app.models.user import UserProfile, Role, Permission, SchoolMembership
 from scripts.provision_admin import bootstrap_roles_and_permissions
 
 # In-memory SQLite engine for tests
-TEST_DB_URL = "sqlite:///./test_sms.db"
-test_engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
+TEST_DB_URL = "sqlite://"
+test_engine = create_engine(
+    TEST_DB_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
 
@@ -93,11 +98,6 @@ def setup_test_db():
 
     Base.metadata.drop_all(bind=test_engine)
     test_engine.dispose()
-    try:
-        if os.path.exists("./test_sms.db"):
-            os.remove("./test_sms.db")
-    except Exception:
-        pass
 
 
 @pytest.fixture

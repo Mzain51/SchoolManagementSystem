@@ -22,9 +22,10 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str = "placeholder-service-role-key"
     SUPABASE_JWT_SECRET: str = ""
     SUPABASE_JWKS_URL: str = ""
+    SUPABASE_JWT_ISSUER: Optional[str] = None
     
     # Security & Development Flags
-    ENABLE_DEV_AUTH_BYPASS: bool = True  # Allows offline testing/development when Supabase is not reached
+    ENABLE_DEV_AUTH_BYPASS: bool = False
     DEV_ADMIN_EMAIL: str = "admin@schools.pk"
     
     # CORS

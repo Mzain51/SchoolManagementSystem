@@ -1,13 +1,14 @@
 import sys
 import os
 import argparse
-import uuid
-from datetime import datetime
+from alembic import command
+from alembic.config import Config
 
 # Add backend directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.core.database import SessionLocal, Base, engine
+from app.core.database import SessionLocal
+from app.core.config import settings
 from app.models.school import School
 from app.models.user import UserProfile, Role, Permission, SchoolMembership
 from app.models.audit import AuditLog
@@ -94,8 +95,10 @@ def provision_admin(
     auth_sub: str = None,
 ):
     """Idempotently provisions or updates the school and assigns the administrator."""
-    # Ensure tables exist
-    Base.metadata.create_all(bind=engine)
+    # Apply the versioned schema before writing application data.
+    alembic_config = Config(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "alembic.ini")))
+    alembic_config.set_main_option("script_location", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "alembic")))
+    command.upgrade(alembic_config, "head")
     db = SessionLocal()
 
     try:
@@ -120,7 +123,12 @@ def provision_admin(
             print(f"  -> Found existing school ID: {school.id}")
 
         # 3. Create or fetch UserProfile
-        user_id = auth_sub or f"usr-{uuid.uuid4().hex[:16]}"
+        if auth_sub:
+            user_id = auth_sub
+        elif settings.ENVIRONMENT.lower() == "development" and settings.ENABLE_DEV_AUTH_BYPASS:
+            user_id = "dev-admin-id"
+        else:
+            raise ValueError("Pass --auth-sub for an existing Supabase Auth user when provisioning outside local demo mode.")
         print(f"[3/4] Setting up administrator profile: {email}...")
         user = db.query(UserProfile).filter(UserProfile.email == email).first()
         if not user:

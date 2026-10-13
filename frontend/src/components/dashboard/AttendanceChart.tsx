@@ -30,6 +30,9 @@ export function AttendanceChart({ data }: AttendanceChartProps) {
       </div>
 
       <div className="mt-4 h-64 w-full">
+        {data.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-center text-xs text-slate-400">Attendance trends will appear after the attendance module is set up.</div>
+        ) : (
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
@@ -61,6 +64,7 @@ export function AttendanceChart({ data }: AttendanceChartProps) {
             />
           </AreaChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

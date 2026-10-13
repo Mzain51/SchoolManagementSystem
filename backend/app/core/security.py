@@ -19,8 +19,14 @@ def decode_supabase_token(token: str) -> dict:
     If dev mode is enabled and a dev token is passed, resolves dev user.
     """
     # 1. Check for development bypass if enabled
-    if settings.ENABLE_DEV_AUTH_BYPASS and token.startswith("dev-token-"):
+    if (
+        settings.ENVIRONMENT.lower() == "development"
+        and settings.ENABLE_DEV_AUTH_BYPASS
+        and token.startswith("dev-token-")
+    ):
         role_type = token.replace("dev-token-", "")
+        if role_type not in {"admin", "teacher", "accountant", "staff"}:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid development token.")
         return {
             "sub": f"dev-{role_type}-id",
             "email": f"{role_type}@schools.pk",
@@ -28,26 +34,29 @@ def decode_supabase_token(token: str) -> dict:
             "user_metadata": {"full_name": f"Demo {role_type.capitalize()}"},
         }
 
-    # 2. Standard Supabase token verification
+    # 2. Verify Supabase access tokens with the configured JWT secret or Supabase JWKS.
     try:
         if settings.SUPABASE_JWT_SECRET:
             payload = jwt.decode(
                 token,
                 settings.SUPABASE_JWT_SECRET,
                 algorithms=["HS256"],
-                options={"verify_aud": False},
+                audience="authenticated",
+                issuer=settings.SUPABASE_JWT_ISSUER or f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1",
             )
-            return payload
         else:
-            # If no secret is configured yet, decode unverified in dev or raise in prod
-            if settings.ENVIRONMENT == "production":
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="SUPABASE_JWT_SECRET is not configured on the server.",
-                )
-            # In development fallback:
-            payload = jwt.decode(token, options={"verify_signature": False})
-            return payload
+            jwks_url = settings.SUPABASE_JWKS_URL or f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+            signing_key = jwt.PyJWKClient(jwks_url).get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=[signing_key.algorithm_name],
+                audience="authenticated",
+                issuer=settings.SUPABASE_JWT_ISSUER or f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1",
+            )
+        return payload
+    except HTTPException:
+        raise
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -86,6 +95,10 @@ def get_current_user(
         )
 
     user = db.query(UserProfile).filter(UserProfile.id == user_id).first()
+
+    if not user:
+        # Check if user exists by email (e.g. admin provisioned with a different ID)
+        user = db.query(UserProfile).filter(UserProfile.email == email).first()
 
     if not user:
         # Auto-provision or register user profile on first valid Supabase login
@@ -131,6 +144,21 @@ def get_user_context(
     available_schools = []
     active_membership = None
 
+    if current_user.is_superadmin:
+        available_schools = [
+            SchoolRead.model_validate(s)
+            for s in db.query(School).filter(School.is_active == True).all()
+        ]
+        if x_school_id:
+            active_school = next((s for s in available_schools if s.id == x_school_id), None)
+            if not active_school:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="School not found.")
+            return UserContext(
+                user_id=current_user.id, email=current_user.email, full_name=current_user.full_name,
+                is_superadmin=True, active_school_id=x_school_id, active_role="admin",
+                permissions=[], available_schools=available_schools,
+            )
+
     for m in memberships:
         school_model = db.query(School).filter(School.id == m.school_id, School.is_active == True).first()
         if school_model:
@@ -139,6 +167,12 @@ def get_user_context(
                 active_membership = m
 
     # If no specific X-School-ID was requested, use the first available school
+    if x_school_id and not active_membership and not current_user.is_superadmin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: you do not have an active membership in the selected school.",
+        )
+
     if not active_membership and memberships:
         active_membership = memberships[0]
 

@@ -1,3 +1,13 @@
+from datetime import datetime, timedelta, timezone
+
+import jwt
+import pytest
+from fastapi import HTTPException
+
+from app.core.config import settings
+from app.core.security import decode_supabase_token
+
+
 def test_unauthenticated_request_blocked(client):
     """Requests without token to protected endpoints must be rejected."""
     response = client.get("/api/v1/auth/me")
@@ -58,3 +68,29 @@ def test_dashboard_stats_endpoint(client):
     assert "total_teachers" in data
     assert "recent_activities" in data
     assert "fee_collection_trend" in data
+def test_production_auth_rejects_dev_tokens_and_checks_expiry(monkeypatch):
+    issuer = "https://school-test.supabase.co/auth/v1"
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ENABLE_DEV_AUTH_BYPASS", True)
+    test_secret = "test-jwt-secret-for-signature-validation-32-bytes"
+    monkeypatch.setattr(settings, "SUPABASE_JWT_SECRET", test_secret)
+    monkeypatch.setattr(settings, "SUPABASE_URL", "https://school-test.supabase.co")
+    monkeypatch.setattr(settings, "SUPABASE_JWT_ISSUER", None)
+
+    valid_token = jwt.encode({
+        "sub": "supabase-user", "email": "user@example.com", "aud": "authenticated",
+        "iss": issuer, "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+    }, test_secret, algorithm="HS256")
+    assert decode_supabase_token(valid_token)["sub"] == "supabase-user"
+
+    with pytest.raises(HTTPException) as dev_error:
+        decode_supabase_token("dev-token-admin")
+    assert dev_error.value.status_code == 401
+
+    expired_token = jwt.encode({
+        "sub": "supabase-user", "email": "user@example.com", "aud": "authenticated",
+        "iss": issuer, "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
+    }, test_secret, algorithm="HS256")
+    with pytest.raises(HTTPException) as expiry_error:
+        decode_supabase_token(expired_token)
+    assert expiry_error.value.status_code == 401

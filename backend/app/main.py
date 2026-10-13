@@ -1,18 +1,7 @@
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from app.core.config import settings
-from app.core.database import engine, Base
 from app.api.v1.router import api_router
-from app.models import School, UserProfile, Role, Permission, SchoolMembership, AuditLog  # register all models
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Ensure tables exist (Alembic handles migrations, this guarantees local test runs have schema ready)
-    Base.metadata.create_all(bind=engine)
-    yield
 
 
 app = FastAPI(
@@ -20,7 +9,6 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
-    lifespan=lifespan,
 )
 
 # CORS middleware

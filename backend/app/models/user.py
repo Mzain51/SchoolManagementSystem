@@ -1,8 +1,7 @@
 from sqlalchemy import Column, String, Boolean, ForeignKey, Table, UniqueConstraint, DateTime
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from app.core.database import Base
-from app.models.base import TimestampMixin, generate_uuid
+from app.models.base import TimestampMixin, generate_uuid, utc_now
 
 
 # Association table for Role <-> Permission
@@ -78,7 +77,7 @@ class SchoolMembership(Base, TimestampMixin):
     school_id = Column(String(36), ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
     role_id = Column(String(36), ForeignKey("roles.id", ondelete="RESTRICT"), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    joined_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    joined_at = Column(DateTime, default=utc_now, nullable=False)
 
     # Relationships
     user = relationship("UserProfile", back_populates="memberships")

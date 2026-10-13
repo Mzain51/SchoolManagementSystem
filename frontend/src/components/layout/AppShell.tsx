@@ -3,39 +3,48 @@
 import React, { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { UserContext } from "@/types/api";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 
 interface AppShellProps {
   children: React.ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userContext, setUserContext] = useState<UserContext | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [requiresLogin, setRequiresLogin] = useState(false);
+  const [apiStatus, setApiStatus] = useState<"checking" | "online" | "offline">("checking");
 
   const fetchUserContext = async () => {
     try {
-      setLoading(true);
+      setApiStatus("checking");
       setError(null);
+      setRequiresLogin(false);
       const data = await api.getMe();
       setUserContext(data);
+      setApiStatus("online");
       if (data.active_school_id && !localStorage.getItem("sms_active_school_id")) {
         localStorage.setItem("sms_active_school_id", data.active_school_id);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load user context:", err);
-      setError(err.message || "Failed to connect to school backend");
-    } finally {
-      setLoading(false);
+      setApiStatus(err instanceof ApiError && err.status === 0 ? "offline" : "online");
+      setRequiresLogin(err instanceof ApiError && err.status === 401);
+      setError(err instanceof Error ? err.message : "Failed to load your school profile.");
     }
   };
 
   useEffect(() => {
+    if (pathname === "/login") return;
     fetchUserContext();
-  }, []);
+  }, [pathname]);
+
+  if (pathname === "/login") return <>{children}</>;
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans antialiased text-slate-900">
@@ -43,6 +52,7 @@ export function AppShell({ children }: AppShellProps) {
       <Sidebar
         userContext={userContext}
         isOpen={sidebarOpen}
+        apiStatus={apiStatus}
         onClose={() => setSidebarOpen(false)}
       />
 
@@ -70,12 +80,11 @@ export function AppShell({ children }: AppShellProps) {
                   <span className="font-bold">Backend Connection Notice: </span>
                   <span>{error}</span>
                 </div>
-                <button
-                  onClick={fetchUserContext}
-                  className="rounded-md bg-rose-600 px-3 py-1 font-semibold text-white hover:bg-rose-700"
-                >
-                  Retry
-                </button>
+                {requiresLogin ? (
+                  <Link href="/login" className="rounded-md bg-rose-600 px-3 py-1 font-semibold text-white hover:bg-rose-700">Sign in</Link>
+                ) : (
+                  <button onClick={fetchUserContext} className="rounded-md bg-rose-600 px-3 py-1 font-semibold text-white hover:bg-rose-700">Retry</button>
+                )}
               </div>
             </div>
           )}

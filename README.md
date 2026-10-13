@@ -36,7 +36,7 @@ SUPABASE_URL=https://[ref].supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_JWT_SECRET=your-supabase-jwt-secret
 ```
-*(In development, SQLite fallback `sqlite:///./sms_dev.db` and dev token bypass are enabled automatically).*
+For local development, use SQLite and explicitly set `ENABLE_DEV_AUTH_BYPASS=true` in `backend/.env`. The bypass only accepts the built-in demo roles and is ignored unless `ENVIRONMENT=development`. Production must use verified Supabase access tokens and keep the bypass disabled.
 
 ---
 
@@ -58,6 +58,7 @@ Provision the initial School and Administrator safely:
 ```bash
 python scripts/provision_admin.py --email admin@schools.pk --name "Principal M. Tariq" --school-name "Lahore Model Academy" --school-code "LMA-01"
 ```
+In production, first create the user in Supabase Auth and pass its user ID with `--auth-sub`; local demo mode uses the matching `dev-admin-id` fixture when the bypass is enabled.
 
 Run database migrations:
 ```bash
@@ -87,6 +88,16 @@ npm install
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+### Implemented student workflow
+
+- Open `/academic-setup` to create academic years, classes, and sections.
+- Open `/students` to search and filter the roster, register a student, inspect a profile, or edit the record.
+- The page calls the typed client in `frontend/src/lib/api-client.ts`, which sends requests to `/api/v1/students` and `/api/v1/academic/*`.
+- FastAPI validates the request and school/role context, then delegates to the service layer. SQLAlchemy persists the student, enrollment links, and audit entry.
+- In ASP.NET Core MVC terms: `app/students/page.tsx` is the routed UI, `api-client.ts` is the frontend HTTP service, the decorated FastAPI function is the JSON controller action, Pydantic schemas are request/response models, and the service/model layers contain business and persistence logic.
+
+The remaining sidebar modules are planned but not implemented yet; the working routes for this milestone are Students and Academic Setup.
 
 ---
 

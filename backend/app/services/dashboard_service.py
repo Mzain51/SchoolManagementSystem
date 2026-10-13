@@ -1,9 +1,10 @@
-from datetime import datetime, date, timedelta
 from typing import List
 from sqlalchemy.orm import Session
 from app.models.school import School
 from app.models.user import SchoolMembership, Role, UserProfile
 from app.models.audit import AuditLog
+from app.models.academic import SchoolClass, Section
+from app.models.student import Student
 from app.schemas.dashboard import (
     DashboardStatsResponse,
     TrendPoint,
@@ -51,11 +52,11 @@ class DashboardService:
                 .count()
             )
 
-        # In Phase 1 foundation: Student and fee models will be added in Phase 2 & 5.
-        # We supply real base calculations and zero counts if tables are fresh.
-        total_students = 0
-        total_classes = 0
-        total_sections = 0
+        total_students = db.query(Student).filter(
+            Student.school_id == school_id, Student.status == "active"
+        ).count()
+        total_classes = db.query(SchoolClass).filter(SchoolClass.school_id == school_id).count()
+        total_sections = db.query(Section).filter(Section.school_id == school_id).count()
 
         # Today's attendance counts
         students_present_today = 0
@@ -63,9 +64,10 @@ class DashboardService:
         students_leave_today = 0
         student_attendance_pct = 0.0
 
-        staff_present_today = total_teachers + total_staff
+        # Attendance is not yet implemented; do not report staff as present without records.
+        staff_present_today = 0
         staff_absent_today = 0
-        staff_attendance_pct = 100.0 if (total_teachers + total_staff) > 0 else 0.0
+        staff_attendance_pct = 0.0
 
         # Financials in PKR
         today_fee_collection = 0.0
@@ -73,19 +75,9 @@ class DashboardService:
         total_outstanding_balance = 0.0
         overdue_students_count = 0
 
-        # 7-day attendance trend
-        days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-        attendance_trend: List[TrendPoint] = [
-            TrendPoint(label=d, value=94.5 + (i % 3) * 1.5, secondary_value=96.0)
-            for i, d in enumerate(days)
-        ]
-
-        # Monthly fee collection trend (in PKR thousands)
-        months = ["May", "Jun", "Jul", "Aug", "Sep", "Oct"]
-        fee_collection_trend: List[TrendPoint] = [
-            TrendPoint(label=m, value=(180000 + (i * 25000)), secondary_value=(200000 + (i * 20000)))
-            for i, m in enumerate(months)
-        ]
+        # Attendance and finance are not implemented, so their charts remain empty until backed by records.
+        attendance_trend: List[TrendPoint] = []
+        fee_collection_trend: List[TrendPoint] = []
 
         # Recent activities from AuditLog
         recent_logs = (
@@ -109,41 +101,10 @@ class DashboardService:
                 )
             )
 
-        if not recent_activities:
-            recent_activities = [
-                ActivityItem(
-                    id="init-1",
-                    action="SYSTEM_INITIALIZED",
-                    description="School academic workspace initialized successfully",
-                    user_name="Administrator",
-                    created_at=datetime.utcnow(),
-                )
-            ]
+
 
         # Recent notices
-        recent_notices: List[NoticeItem] = [
-            NoticeItem(
-                id="n-1",
-                title="Midterm Examination Schedule Announcement",
-                category="Academic",
-                date=date.today(),
-                is_urgent=True,
-            ),
-            NoticeItem(
-                id="n-2",
-                title="Monthly Fee Vouchers Issued for October 2026",
-                category="Finance",
-                date=date.today() - timedelta(days=2),
-                is_urgent=False,
-            ),
-            NoticeItem(
-                id="n-3",
-                title="Parent-Teacher Meeting (PTM) Notice",
-                category="General",
-                date=date.today() - timedelta(days=5),
-                is_urgent=False,
-            ),
-        ]
+        recent_notices: List[NoticeItem] = []
 
         return DashboardStatsResponse(
             school_id=school_id,
